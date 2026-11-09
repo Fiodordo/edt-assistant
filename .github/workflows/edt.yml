@@ -1,0 +1,51 @@
+name: EDT assistant
+
+on:
+  schedule:
+    - cron: "*/20 * * * *"
+    - cron: "0 17 * * 0"   # dimanche 18h (heure de Paris, hiver)
+  workflow_dispatch:
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Restaurer l'état précédent
+        uses: actions/cache@v4
+        with:
+          path: |
+            etat.json
+            envoyes.json
+          key: edt-state-${{ github.run_id }}
+          restore-keys: |
+            edt-state-
+
+      - name: Télécharger l'emploi du temps
+        env:
+          ICS_URL: ${{ secrets.ICS_URL }}
+        run: curl -sSfL "$ICS_URL" -o edt.ics
+
+      - name: Résumé hebdo (dimanche)
+        if: github.event.schedule == '0 17 * * 0'
+        env:
+          TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          EDT_FILTRE: ${{ vars.EDT_FILTRE }}
+        run: python edt.py resume
+
+      - name: Changements, rappels et rendus
+        if: github.event.schedule == '*/20 * * * *' || github.event_name == 'workflow_dispatch'
+        env:
+          TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          EDT_FILTRE: ${{ vars.EDT_FILTRE }}
+        run: |
+          python edt.py changements
+          python edt.py rappels
+          python edt.py rendus
