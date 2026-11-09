@@ -164,9 +164,19 @@ def cmd_resume():
     send("\n".join(lignes))
 
 
-COMMANDES = {"rappels": cmd_rappels, "changements": cmd_changements, "rendus": cmd_rendus, "resume": cmd_resume}
+def cmd_bonjour():
+    now = dt.datetime.now(PARIS)
+    if now.date() > dt.date(2027, 1, 31):
+        print("Période terminée, rien envoyé.")
+        return
+    aujourdhui = [e for e in load_events() if e["start"].date() == now.date()]
+    lignes = [f"EDT assistant actif. {len(aujourdhui)} cours aujourd'hui."] + [fmt(e) for e in aujourdhui]
+    send("\n".join(lignes))
+
+
+COMMANDES = {"rappels": cmd_rappels, "changements": cmd_changements, "rendus": cmd_rendus, "resume": cmd_resume, "bonjour": cmd_bonjour}
 
 if __name__ == "__main__":
     if len(sys.argv) != 2 or sys.argv[1] not in COMMANDES:
-        sys.exit("Usage : python edt.py [rappels|changements|rendus|resume]")
+        sys.exit("Usage : python edt.py [rappels|changements|rendus|resume|bonjour]")
     COMMANDES[sys.argv[1]]()
